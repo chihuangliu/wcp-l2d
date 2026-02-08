@@ -3275,6 +3275,7 @@ dev = [
     { name = "ipywidgets" },
     { name = "jupyter" },
     { name = "jupyterlab" },
+    { name = "umap-learn" },
 ]
 
 [package.metadata]
@@ -3300,6 +3301,7 @@ dev = [
     { name = "ipywidgets", specifier = ">=8.1.8" },
     { name = "jupyter", specifier = ">=1.1.1" },
     { name = "jupyterlab", specifier = ">=4.5.3" },
+    { name = "umap-learn", specifier = ">=0.5.11" },
 ]
 
 [[package]]

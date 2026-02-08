@@ -33,4 +33,5 @@ dev = [
     "ipywidgets>=8.1.8",
     "jupyter>=1.1.1",
     "jupyterlab>=4.5.3",
+    "umap-learn>=0.5.11",
 ]
