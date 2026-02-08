@@ -1,0 +1,29 @@
+[project]
+name = "wcp-l2d"
+version = "0.1.0"
+description = "Post-hoc Adaptive Learning to Defer using Weighted Conformal Prediction"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "llvmlite>=0.43",
+    "matplotlib>=3.10.8",
+    "numba>=0.60",
+    "numpy>=2.4.2",
+    "pandas>=3.0.0",
+    "scikit-learn>=1.8.0",
+    "seaborn>=0.13.2",
+    "torch>=2.10.0",
+    "torchcp>=1.2.1",
+    "torchvision>=0.25.0",
+    "torchxrayvision>=1.4.0",
+    "tqdm>=4.67.3",
+    "umap-learn>=0.5.7",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.2.0",
+    "ipywidgets>=8.1.8",
+    "jupyter>=1.1.1",
+    "jupyterlab>=4.5.3",
+]

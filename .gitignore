@@ -1,0 +1,23 @@
+# Virtual environment
+.venv/
+
+# Claude
+.claude
+
+# Data directory (large cached features)
+data/*
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
