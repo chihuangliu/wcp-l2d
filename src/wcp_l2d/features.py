@@ -16,7 +16,7 @@ import torchxrayvision as xrv
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from .data import make_dataloader
+from .data import apply_xrv_transforms, make_dataloader
 from .pathologies import COMMON_PATHOLOGIES
 
 
@@ -112,6 +112,7 @@ def extract_and_save(
     batch_size: int = 32,
     num_workers: int = 4,
     device: str = "mps",
+    xrv_transforms: bool = True,
 ) -> ExtractedFeatures:
     """Full pipeline: DataLoader → extract → save.
 
@@ -124,7 +125,10 @@ def extract_and_save(
         batch_size: Batch size for extraction
         num_workers: DataLoader worker count
         device: Target device
+        xrv_transforms: Apply XRayCenterCrop + XRayResizer(224) to the dataset
     """
+    if xrv_transforms:
+        apply_xrv_transforms(dataset)
     dataloader = make_dataloader(dataset, batch_size, num_workers, shuffle=False)
     features, labels, indices = extract_features(model, dataloader, device)
 

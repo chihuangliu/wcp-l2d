@@ -33,6 +33,8 @@ def main():
                         help="Device: mps, cuda, or cpu")
     parser.add_argument("--views", nargs="+", default=["PA", "AP"],
                         help="X-ray view positions to include")
+    parser.add_argument("--xrv-transforms", action=argparse.BooleanOptionalAction, default=True,
+                        help="Apply XRayCenterCrop + XRayResizer(224) (default: True)")
     args = parser.parse_args()
 
     # Verify device
@@ -68,6 +70,7 @@ def main():
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         device=device,
+        xrv_transforms=args.xrv_transforms,
     )
 
     # Summary

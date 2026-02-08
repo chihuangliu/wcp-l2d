@@ -7,7 +7,6 @@ to the 7 common pathologies shared between CheXpert and NIH.
 from __future__ import annotations
 
 import torch
-import numpy as np
 import torchxrayvision as xrv
 from torch.utils.data import DataLoader
 
@@ -55,8 +54,20 @@ def load_and_align_dataset(
     return dataset
 
 
+def apply_xrv_transforms(dataset, size: int = 224) -> None:
+    """Apply XRayCenterCrop and XRayResizer transforms to a dataset in-place."""
+    from torchvision import transforms
+
+    dataset.transform = transforms.Compose([
+        xrv.datasets.XRayCenterCrop(),
+        xrv.datasets.XRayResizer(size),
+    ])
+
+
 def collate_xrv(batch: list[dict]) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Custom collate for torchxrayvision dict-based samples.
+
+    Expects images to already be the correct size (e.g. via apply_xrv_transforms).
 
     Returns:
         imgs: [B, 1, H, W] float tensor
