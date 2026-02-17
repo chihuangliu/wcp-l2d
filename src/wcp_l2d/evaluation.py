@@ -293,6 +293,86 @@ def evaluate_wcp(
     return results
 
 
+def evaluate_continuous_deferral(
+    cal_logits: np.ndarray,
+    cal_labels: np.ndarray,
+    test_logits: np.ndarray,
+    test_labels: np.ndarray,
+    alphas: np.ndarray,
+    cal_weights: np.ndarray | None = None,
+    expert_accuracy: float = 0.85,
+) -> list[DeferralResult]:
+    """Continuous deferral with calibrated uncertainty threshold.
+
+    Uses uncertainty score u(x) = 1 - max(softmax(logits)) and sets the
+    deferral threshold via a (possibly weighted) quantile of calibration
+    scores.  This is the method from Section 4 of the continuous-deferral
+    report.
+
+    Args:
+        cal_logits: [N_cal, K] calibration logits.
+        cal_labels: [N_cal] calibration labels (unused for threshold, kept
+            for API consistency).
+        test_logits: [N_test, K] test logits.
+        test_labels: [N_test] test labels.
+        alphas: array of significance levels to sweep.
+        cal_weights: [N_cal] importance weights from DRE.  If None, uses
+            the unweighted (source-calibrated) quantile.
+        expert_accuracy: fixed expert accuracy for deferred samples.
+
+    Returns:
+        List of DeferralResult, one per alpha.
+    """
+    cal_probs = softmax(cal_logits, axis=1)
+    u_cal = 1.0 - cal_probs.max(axis=1)
+
+    test_probs = softmax(test_logits, axis=1)
+    u_test = 1.0 - test_probs.max(axis=1)
+    model_predictions = np.argmax(test_logits, axis=1)
+
+    # Pre-sort calibration scores (and weights) for weighted quantile
+    sort_idx = np.argsort(u_cal)
+    u_cal_sorted = u_cal[sort_idx]
+    if cal_weights is not None:
+        w_sorted = cal_weights[sort_idx]
+        cum_w = np.cumsum(w_sorted)
+        total_w = cum_w[-1]
+
+    results = []
+    for alpha in alphas:
+        # Compute threshold tau
+        if cal_weights is None:
+            tau = float(np.quantile(u_cal, 1.0 - alpha))
+        else:
+            # Weighted quantile: smallest tau s.t.
+            # sum(w_i * 1[u_i <= tau]) / sum(w_i) >= 1 - alpha
+            target = (1.0 - alpha) * total_w
+            idx = np.searchsorted(cum_w, target, side="left")
+            idx = min(idx, len(u_cal_sorted) - 1)
+            tau = float(u_cal_sorted[idx])
+
+        defer_mask = u_test > tau
+        metrics = compute_system_accuracy(
+            model_predictions, test_labels, defer_mask,
+            expert_accuracy=expert_accuracy,
+        )
+
+        method = "Continuous (DRE)" if cal_weights is not None else "Continuous (source)"
+        results.append(DeferralResult(
+            method=method,
+            alpha_or_threshold=float(alpha),
+            system_accuracy=metrics["system_accuracy"],
+            deferral_rate=metrics["deferral_rate"],
+            coverage_rate=np.nan,  # N/A for continuous deferral
+            average_set_size=np.nan,
+            model_accuracy_on_kept=metrics["model_accuracy_on_kept"],
+            n_total=len(test_labels),
+            n_deferred=metrics["n_deferred"],
+        ))
+
+    return results
+
+
 def plot_accuracy_rejection_curve(
     results: dict[str, list[DeferralResult]],
     title: str = "System Accuracy vs Deferral Rate",

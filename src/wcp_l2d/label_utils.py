@@ -115,3 +115,38 @@ def extract_binary_labels(
     binary_labels = col[valid_mask].astype(np.int64)
 
     return filtered_features, binary_labels, valid_mask
+
+
+def extract_multilabel_valid_samples(
+    features: np.ndarray,
+    labels: np.ndarray,
+    min_valid_pathologies: int = 1,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Filter samples that have at least ``min_valid_pathologies`` non-NaN labels.
+
+    Unlike ``extract_binary_labels`` (single pathology) or
+    ``multilabel_to_singlelabel`` (lossy conversion), this keeps the
+    original multi-label structure intact while filtering out samples
+    with too many missing labels.
+
+    Args:
+        features: [N, D] feature matrix.
+        labels: [N, K] multi-label matrix (0, 1, NaN).
+        min_valid_pathologies: minimum number of non-NaN pathology labels
+            required to keep a sample.
+
+    Returns:
+        filtered_features: [M, D] where M <= N.
+        filtered_labels: [M, K] (still contains NaN for some pathologies).
+        sample_mask: [N] boolean mask of kept rows.
+        valid_pathology_mask: [M, K] boolean (True where label is non-NaN).
+    """
+    valid_per_sample = ~np.isnan(labels)
+    n_valid = valid_per_sample.sum(axis=1)
+    sample_mask = n_valid >= min_valid_pathologies
+
+    filtered_features = features[sample_mask]
+    filtered_labels = labels[sample_mask]
+    valid_pathology_mask = valid_per_sample[sample_mask]
+
+    return filtered_features, filtered_labels, sample_mask, valid_pathology_mask
