@@ -36,8 +36,10 @@ def multilabel_entropy(probs: np.ndarray) -> np.ndarray:
     Returns:
         entropy: [N] entropy values. Higher = more uncertain.
     """
-    eps = 1e-10
-    p = np.clip(probs, eps, 1 - eps)
+    # Use float64 to avoid float32 rounding: 1.0 - 1e-10 rounds to 1.0 in
+    # float32, causing 0.0 * log(0.0) = NaN.  eps=1e-15 is safe in float64.
+    eps = 1e-15
+    p = np.clip(probs.astype(np.float64), eps, 1 - eps)
     per_label = -(p * np.log(p) + (1 - p) * np.log(1 - p))
     return per_label.sum(axis=1)
 
@@ -88,6 +90,9 @@ def select_for_deferral(
 
     rng = np.random.RandomState(seed)
     tie_indices = np.where(at_threshold)[0]
+    # Guard: if n_needed exceeds available tie-indices (e.g. due to NaN in
+    # scores), take all of them (deferral rate stays at or below beta).
+    n_needed = min(n_needed, len(tie_indices))
     chosen = rng.choice(tie_indices, size=n_needed, replace=False)
 
     defer_mask = above.copy()
