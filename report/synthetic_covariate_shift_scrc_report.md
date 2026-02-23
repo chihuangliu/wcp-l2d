@@ -223,27 +223,33 @@ TARGET test set, n=12,907, 10,971 kept after Stage 1 deferral.
 
 ### 7.1 Summary
 
-| Method | ESS% | Cal FNR | Test FNR | **FNR Gap** | Test FPR |
-|--------|------|---------|---------|------------|---------|
-| LR-DRE (nc) | 0.3% | 0.074 | 0.283 | **0.183** | 0.349 |
-| LR-DRE (clip=20) | 1.4% | 0.080 | 0.212 | **0.112** | 0.454 |
-| GNN-DRE (clip=20) | 16.9% | 0.093 | 0.119 | **0.019** ← | 0.469 |
-| MLP-DRE (clip=20) | 9.4% | 0.098 | 0.145 | **0.045** | 0.459 |
+| Method | ESS% | Cal FNR | Test FNR | **FNR Gap** | **Violation** | Test FPR |
+|--------|------|---------|---------|------------|--------------|---------|
+| LR-DRE (nc) | 0.3% | 0.074 | 0.283 | **0.183** | **0.183** | 0.349 |
+| LR-DRE (clip=20) | 1.4% | 0.080 | 0.212 | **0.112** | **0.122** | 0.454 |
+| GNN-DRE (clip=20) | 16.9% | 0.093 | 0.119 | **0.019** ← | **0.024** ← | 0.469 |
+| MLP-DRE (clip=20) | 9.4% | 0.098 | 0.145 | **0.045** | **0.056** | 0.459 |
 
-**FNR Gap = |Test FNR − α|.** Under ideal pure covariate shift, theory predicts this approaches 0 as ESS → ∞. GNN-DRE achieves gap=0.019, consistent with the theory. MLP-DRE gap=0.045 is 2.4× larger than GNN, despite a nearly identical classifier AUC — directly attributable to the 1.8× ESS difference (9.4% vs 16.9%).
+**FNR Gap = |mean FNR − α|** = |mean_k(FNR_k) − α|. Symmetric; captures whether the mean FNR overshoots or undershoots α. Pathologies above and below α cancel each other in the mean.
+
+**Violation = mean_k(max(0, FNR_k − α)).** One-sided: 0 when the guarantee is met for a pathology (FNR_k ≤ α), positive only when violated. Since over-covering pathologies contribute 0 (not negative), Violation ≥ FNR Gap whenever some pathologies are below α and others are above — the cancellation that reduces FNR Gap does not apply.
+
+At σ=3.0, LR-nc: Violation=0.183 ≈ FNR Gap=0.183 because all seven pathologies exceed α (no cancellation possible). LR-c: Violation=0.122 > Gap=0.112 — 4/7 pathologies overshoot α, but 3 (Atelectasis, Cardiomegaly, Pneumonia) are below; the below-α trio pulls the mean FNR down, reducing Gap, but contributes 0 to Violation. GNN-DRE: Violation=0.024 > Gap=0.019 for the same reason (Edema FNR=0.079, Effusion FNR=0.086 are below α). MLP-DRE: Violation=0.056 > Gap=0.045, concentrated in Pneumothorax (violation=0.349).
 
 ### 7.2 Per-pathology breakdown
 
-| Pathology | LR-nc FNR | FPR | LR-c FNR | FPR | GNN FNR | FPR | MLP FNR | FPR |
-|-----------|---------|-----|--------|-----|--------|-----|--------|-----|
-| Atelectasis | 0.119 | 0.525 | 0.091 | 0.583 | 0.104 | 0.503 | 0.100 | 0.520 |
-| Cardiomegaly | 0.097 | 0.387 | 0.097 | 0.387 | 0.118 | 0.303 | 0.113 | 0.328 |
-| Consolidation | 0.360 | 0.174 | 0.154 | 0.432 | 0.133 | 0.379 | 0.130 | 0.371 |
-| Edema | 0.150 | 0.387 | 0.113 | 0.456 | 0.079 | 0.473 | 0.067 | 0.518 |
-| Effusion | 0.185 | 0.268 | 0.116 | 0.395 | 0.086 | 0.412 | 0.068 | 0.446 |
-| Pneumonia | 0.107 | 0.681 | 0.041 | 0.854 | 0.150 | 0.523 | 0.091 | 0.629 |
-| Pneumothorax | **0.962** | 0.019 | **0.873** | 0.068 | **0.163** | 0.692 | **0.449** | 0.398 |
-| **Mean** | **0.283** | 0.349 | **0.212** | 0.454 | **0.119** | 0.469 | **0.145** | 0.459 |
+| Pathology | LR-nc FNR | FPR | Viol. | LR-c FNR | FPR | Viol. | GNN FNR | FPR | Viol. | MLP FNR | FPR | Viol. |
+|-----------|---------|-----|-------|--------|-----|-------|--------|-----|-------|--------|-----|-------|
+| Atelectasis | 0.119 | 0.525 | 0.019 | 0.091 | 0.583 | 0.000 | 0.104 | 0.503 | 0.004 | 0.100 | 0.520 | 0.000 |
+| Cardiomegaly | 0.097 | 0.387 | 0.000 | 0.097 | 0.387 | 0.000 | 0.118 | 0.303 | 0.018 | 0.113 | 0.328 | 0.013 |
+| Consolidation | 0.360 | 0.174 | 0.260 | 0.154 | 0.432 | 0.054 | 0.133 | 0.379 | 0.033 | 0.130 | 0.371 | 0.030 |
+| Edema | 0.150 | 0.387 | 0.050 | 0.113 | 0.456 | 0.013 | 0.079 | 0.473 | 0.000 | 0.067 | 0.518 | 0.000 |
+| Effusion | 0.185 | 0.268 | 0.085 | 0.116 | 0.395 | 0.016 | 0.086 | 0.412 | 0.000 | 0.068 | 0.446 | 0.000 |
+| Pneumonia | 0.107 | 0.681 | 0.007 | 0.041 | 0.854 | 0.000 | 0.150 | 0.523 | 0.050 | 0.091 | 0.629 | 0.000 |
+| Pneumothorax | **0.962** | 0.019 | **0.862** | **0.873** | 0.068 | **0.773** | **0.163** | 0.692 | **0.063** | **0.449** | 0.398 | **0.349** |
+| **Mean** | **0.283** | 0.349 | **0.183** | **0.212** | 0.454 | **0.122** | **0.119** | 0.469 | **0.024** | **0.145** | 0.459 | **0.056** |
+
+Viol. = max(0, FNR − α=0.10). Pneumothorax dominates all violation budgets.
 
 ### 7.3 MLP-DRE vs GNN-DRE: Role of Graph Structure (σ=3.0)
 
@@ -297,32 +303,42 @@ GNN-DRE (c=20) 41.98%  22.71%  16.89%      2.5×  ↓
 
 GNN-DRE ESS decays 2.5× over the full σ range, remaining 12–17× higher than LR-DRE (clipped) at every sigma. MLP-DRE ESS decays 2.0× (slightly slower than GNN's 2.5×), remaining 6–13× higher than LR-DRE (clipped). The MLP's domain AUC is consistently ~0.07–0.09 units above GNN across all σ, reflecting GNN's co-occurrence constraints reducing output domain-separability. At every σ, the ESS ordering is GNN > MLP > LR-c > LR-nc.
 
-### 8.2 FNR gap summary
+### 8.2 FNR gap and Violation summary
 
-| σ | Method | ESS% | Cal FNR | Test FNR | **FNR Gap** | Test FPR |
-|---|--------|------|---------|---------|------------|---------|
-| 1.0 | LR-DRE (nc) | 1.0% | 0.095 | 0.134 | 0.034 | 0.455 |
-| 1.0 | LR-DRE (c=20) | 7.2% | 0.097 | 0.128 | 0.028 | 0.465 |
-| 1.0 | GNN-DRE (c=20) | 42.0% | 0.098 | 0.117 | **0.017** | 0.413 |
-| 1.0 | MLP-DRE (c=20) | 18.5% | 0.098 | 0.147 | **0.047** | 0.373 |
-| 2.0 | LR-DRE (nc) | 0.6% | 0.069 | 0.227 | 0.127 | 0.422 |
-| 2.0 | LR-DRE (c=20) | 2.4% | 0.083 | 0.152 | 0.052 | 0.491 |
-| 2.0 | GNN-DRE (c=20) | 22.7% | 0.094 | 0.116 | **0.016** | 0.453 |
-| 2.0 | MLP-DRE (c=20) | 11.6% | 0.096 | 0.148 | **0.048** | 0.408 |
-| 3.0 | LR-DRE (nc) | 0.3% | 0.074 | 0.283 | 0.183 | 0.349 |
-| 3.0 | LR-DRE (c=20) | 1.4% | 0.080 | 0.212 | 0.112 | 0.454 |
-| 3.0 | GNN-DRE (c=20) | 16.9% | 0.093 | 0.119 | **0.019** | 0.469 |
-| 3.0 | MLP-DRE (c=20) | 9.4% | 0.098 | 0.145 | **0.045** | 0.459 |
+| σ | Method | ESS% | Cal FNR | Test FNR | **FNR Gap** | **Violation** | Test FPR |
+|---|--------|------|---------|---------|------------|--------------|---------|
+| 1.0 | LR-DRE (nc) | 1.0% | 0.095 | 0.134 | 0.034 | 0.039 | 0.455 |
+| 1.0 | LR-DRE (c=20) | 7.2% | 0.097 | 0.128 | 0.028 | 0.032 | 0.465 |
+| 1.0 | GNN-DRE (c=20) | 42.0% | 0.098 | 0.117 | **0.017** | **0.017** | 0.413 |
+| 1.0 | MLP-DRE (c=20) | 18.5% | 0.098 | 0.147 | **0.047** | **0.048** | 0.373 |
+| 2.0 | LR-DRE (nc) | 0.6% | 0.069 | 0.227 | 0.127 | 0.137 | 0.422 |
+| 2.0 | LR-DRE (c=20) | 2.4% | 0.083 | 0.152 | 0.052 | 0.064 | 0.491 |
+| 2.0 | GNN-DRE (c=20) | 22.7% | 0.094 | 0.116 | **0.016** | **0.017** | 0.453 |
+| 2.0 | MLP-DRE (c=20) | 11.6% | 0.096 | 0.148 | **0.048** | **0.051** | 0.408 |
+| 3.0 | LR-DRE (nc) | 0.3% | 0.074 | 0.283 | 0.183 | 0.183 | 0.349 |
+| 3.0 | LR-DRE (c=20) | 1.4% | 0.080 | 0.212 | 0.112 | 0.122 | 0.454 |
+| 3.0 | GNN-DRE (c=20) | 16.9% | 0.093 | 0.119 | **0.019** | **0.024** | 0.469 |
+| 3.0 | MLP-DRE (c=20) | 9.4% | 0.098 | 0.145 | **0.045** | **0.056** | 0.459 |
+
+Violation = mean_k(max(0, FNR_k − α)).
 
 ```
-FNR Gap:       σ=1.0   σ=2.0   σ=3.0   Ratio (1.0→3.0)
-LR-DRE (nc)    0.034   0.127   0.183   5.4×  ↑ grows exponentially
-LR-DRE (c)     0.028   0.052   0.112   4.0×  ↑ grows strongly
-MLP-DRE (c)    0.047   0.048   0.045   1.0×  → essentially flat
-GNN-DRE (c)    0.017   0.016   0.019   1.1×  → essentially flat
+FNR Gap:        σ=1.0   σ=2.0   σ=3.0   Ratio (1.0→3.0)
+LR-DRE (nc)     0.034   0.127   0.183   5.4×  ↑ grows exponentially
+LR-DRE (c)      0.028   0.052   0.112   4.0×  ↑ grows strongly
+MLP-DRE (c)     0.047   0.048   0.045   1.0×  → essentially flat
+GNN-DRE (c)     0.017   0.016   0.019   1.1×  → essentially flat
+
+Violation:      σ=1.0   σ=2.0   σ=3.0   Ratio (1.0→3.0)
+LR-DRE (nc)     0.039   0.137   0.183   4.7×  ↑ grows strongly
+LR-DRE (c)      0.032   0.064   0.122   3.8×  ↑ grows strongly
+MLP-DRE (c)     0.048   0.051   0.056   1.2×  → essentially flat
+GNN-DRE (c)     0.017   0.017   0.024   1.4×  → essentially flat
 ```
 
 **Both GNN-DRE and MLP-DRE FNR gaps are invariant to shift severity.** GNN-DRE remains within [0.016, 0.019] and MLP-DRE within [0.045, 0.048] across the full σ range — both essentially flat (1.0–1.1× change). LR-DRE gap grows 4–5×.
+
+**Violation mirrors this pattern.** GNN-DRE Violation [0.017, 0.024] is 1.4× across σ. MLP-DRE [0.048, 0.056] is 1.2×. LR-DRE violations grow 3.8–4.7×. Notably, at σ=3.0, GNN Violation (0.024) > FNR Gap (0.019). This is not a contradiction: FNR Gap = |mean(FNR) − α| uses the mean, allowing pathologies below α (Edema FNR=0.079, Effusion FNR=0.086) to cancel exceedances above α in the average. Violation = mean(max(0, FNR_k − α)) ignores the under-covering pathologies, so it counts only the 5/7 that exceed α — yielding a higher aggregate. This gap reveals that GNN-DRE is unevenly distributed around α: two pathologies are meaningfully below α (contributing safety margin) while five are slightly above (contributing violations).
 
 **This reveals a fundamental split:** 7-dim probability-space DREs (both GNN and MLP) are robust to shift severity once ESS exceeds ~9%. 1024-dim feature-space LR-DREs degrade exponentially. The co-occurrence graph provides a constant ~2.5× ESS advantage over the matched-parameter MLP, translating to a constant ~2.4–2.8× tighter FNR guarantee across all σ.
 
@@ -446,11 +462,11 @@ Note: Pneumothorax FPR for LR-nc/LR-c collapses to near 0 at σ≥2.0 — the de
 
 ## 9. Key Interpretations
 
-### 9.1 Core hypothesis confirmed: FNR gap is monotone in ESS
+### 9.1 Core hypothesis confirmed: FNR gap and Violation are monotone in ESS
 
 At every σ (LR/GNN arms), the FNR gap ordering is: LR-nc > LR-c > GNN-c. Higher ESS → tighter transport of the calibration guarantee. GNN-DRE's 12–17× ESS advantage over LR-DRE (clipped) translates to a 4–6× smaller FNR gap.
 
-At σ=3.0 with the MLP arm added, the full ordering is: LR-nc (0.183) > LR-c (0.112) > MLP-c (0.045) > GNN-c (0.019), perfectly ordered by ESS% (0.3 < 1.4 < 9.4 < 16.9). The MLP arm slots precisely into the expected position between LR-c and GNN-c, providing a third empirical data point confirming the ESS–FNR gap monotone relationship.
+At σ=3.0 with the MLP arm added, the full FNR Gap ordering is: LR-nc (0.183) > LR-c (0.112) > MLP-c (0.045) > GNN-c (0.019), perfectly ordered by ESS% (0.3 < 1.4 < 9.4 < 16.9). The same ordering holds for Violation: LR-nc (0.183) > LR-c (0.122) > MLP-c (0.056) > GNN-c (0.024). The MLP arm slots precisely into the expected position between LR-c and GNN-c, providing a third empirical data point confirming the ESS–guarantee-quality monotone relationship under both metrics. Violation > FNR Gap for LR-c, MLP-c, and GNN-c (but not LR-nc) because some pathologies fall below α, relaxing the mean but not the per-pathology exceedance count.
 
 ### 9.2 Both 7-dim DREs have flat FNR gaps; LR-DRE degrades with shift severity
 
@@ -530,24 +546,28 @@ The combined FNR gap difference (0.045 MLP vs 0.019 GNN) is attributable ~50% to
 | LR-DRE (c=20) FNR Gap | 0.028 | 0.052 | 0.112 | 4.0× ↑ |
 | **MLP-DRE (c=20) FNR Gap** | **0.047** | **0.048** | **0.045** | **1.0×** |
 | **GNN-DRE (c=20) FNR Gap** | **0.017** | **0.016** | **0.019** | **1.1×** |
+| LR-DRE (nc) Violation | 0.039 | 0.137 | 0.183 | 4.7× ↑ |
+| LR-DRE (c=20) Violation | 0.032 | 0.064 | 0.122 | 3.8× ↑ |
+| **MLP-DRE (c=20) Violation** | **0.048** | **0.051** | **0.056** | **1.2×** |
+| **GNN-DRE (c=20) Violation** | **0.017** | **0.017** | **0.024** | **1.4×** |
 
-Both GNN-DRE and MLP-DRE FNR gaps are essentially flat (≤1.1× change) while LR-DRE (clipped) changes 4.0×. **Key insight: probability-space DRE (either GNN or MLP) is shift-robust; the graph structure provides a constant ~2.5× multiplicative ESS advantage and ~2.6× tighter FNR gap across all σ.**
+Both GNN-DRE and MLP-DRE FNR gaps are essentially flat (≤1.1× change) while LR-DRE (clipped) changes 4.0×. Violation tells the same story: GNN-DRE 1.4× and MLP-DRE 1.2× across σ; LR-DRE 3.8–4.7×. **Key insight: probability-space DRE (either GNN or MLP) is shift-robust; the graph structure provides a constant ~2.5× multiplicative ESS advantage and ~2.6× tighter FNR gap across all σ.**
 
 ### 10.2 Four-arm comparison at σ=3.0 (including MLP)
 
-| Method | Domain AUC | ESS% | Cal FNR | Test FNR | **FNR Gap** | Test FPR |
-|--------|-----------|------|---------|---------|------------|---------|
-| LR-DRE (nc) | 0.998 | 0.3% | 0.074 | 0.283 | **0.183** | 0.349 |
-| LR-DRE (clip=20) | 0.998 | 1.4% | 0.080 | 0.212 | **0.112** | 0.454 |
-| MLP-DRE (clip=20) | **0.936** | 9.4% | 0.098 | 0.145 | **0.045** | 0.459 |
-| GNN-DRE (clip=20) | **0.864** | **16.9%** | 0.093 | 0.119 | **0.019** | 0.469 |
+| Method | Domain AUC | ESS% | Cal FNR | Test FNR | **FNR Gap** | **Violation** | Test FPR |
+|--------|-----------|------|---------|---------|------------|--------------|---------|
+| LR-DRE (nc) | 0.998 | 0.3% | 0.074 | 0.283 | **0.183** | **0.183** | 0.349 |
+| LR-DRE (clip=20) | 0.998 | 1.4% | 0.080 | 0.212 | **0.112** | **0.122** | 0.454 |
+| MLP-DRE (clip=20) | **0.936** | 9.4% | 0.098 | 0.145 | **0.045** | **0.056** | 0.459 |
+| GNN-DRE (clip=20) | **0.864** | **16.9%** | 0.093 | 0.119 | **0.019** | **0.024** | 0.469 |
 
-Four arms, four different DRE spaces, perfectly monotone FNR gap order by ESS%:
-- LR (raw 1024-dim): ESS 1.4% → gap 0.112
-- MLP (7-dim sigmoid, no graph): ESS 9.4% → gap 0.045
-- GNN (7-dim sigmoid, co-occurrence graph): ESS 16.9% → gap 0.019
+Four arms, four different DRE spaces, perfectly monotone FNR gap and Violation order by ESS%:
+- LR (raw 1024-dim): ESS 1.4% → FNR Gap 0.112, Violation 0.122
+- MLP (7-dim sigmoid, no graph): ESS 9.4% → FNR Gap 0.045, Violation 0.056
+- GNN (7-dim sigmoid, co-occurrence graph): ESS 16.9% → FNR Gap 0.019, Violation 0.024
 
-The MLP arm provides the critical intermediate point confirming the ESS–gap relationship is not binary (GNN vs LR) but continuous and monotone. The 1.8× ESS advantage of GNN over MLP translates to a 2.4× tighter FNR guarantee, attributable to the co-occurrence graph reducing domain separability of the output representation.
+The MLP arm provides the critical intermediate point confirming the ESS–gap relationship is not binary (GNN vs LR) but continuous and monotone. The 1.8× ESS advantage of GNN over MLP translates to a 2.4× tighter FNR guarantee, attributable to the co-occurrence graph reducing domain separability of the output representation. Violation is consistently above FNR Gap (except for LR-nc where they coincide), reflecting the asymmetry: LR-c and MLP-c have some pathologies well below α (reducing the gap average but not the violation), while high-FNR pathologies dominate the violation budget.
 
 ---
 
@@ -563,7 +583,9 @@ The MLP arm provides the critical intermediate point confirming the ESS–gap re
 
 5. **MLP-DRE occupies the intermediate position, confirming monotone ESS–FNR relationship.** A matched-parameter MLP (no graph structure) gives ESS=9.4% and FNR gap=0.045 at σ=3.0 — exactly between LR-c (1.4%/0.112) and GNN (16.9%/0.019). The co-occurrence graph in GNN reduces domain separability of outputs by 0.072 AUC units, yielding 1.8× higher ESS and 2.4× tighter FNR guarantee. The MLP fails more severely on Pneumothorax (FNR 0.449 vs GNN 0.163), where co-occurrence encoding adds most value.
 
-6. **Practical recommendation:** Use GNN-DRE for any deployment where domain AUC > 0.90 (the common clinical scenario). MLP-DRE is a valid intermediate if GNN training is impractical and domain AUC < 0.94 (ESS > 9%). Use LR-DRE only when domain AUC < 0.90 and ESS can be verified to exceed 5% without clipping.
+6. **Violation = mean(max(0, FNR_k − α)) is a sharper metric for clinical safety.** FNR Gap (|mean FNR − α|) allows over-performing pathologies to mask violations in other pathologies. Violation isolates only the unsafe pathologies. At σ=3.0: GNN Violation (0.024) vs. FNR Gap (0.019) reveals that Edema and Effusion (below α) were masking exceedances in Cardiomegaly, Consolidation, Pneumonia, and Pneumothorax. Both metrics confirm the same ordering (GNN < MLP < LR-c < LR-nc), but Violation exposes the per-pathology risk more directly. Both metrics are stable (flat) for 7-dim DREs and grow sharply for LR-DRE.
+
+7. **Practical recommendation:** Use GNN-DRE for any deployment where domain AUC > 0.90 (the common clinical scenario). MLP-DRE is a valid intermediate if GNN training is impractical and domain AUC < 0.94 (ESS > 9%). Use LR-DRE only when domain AUC < 0.90 and ESS can be verified to exceed 5% without clipping.
 
 ---
 
