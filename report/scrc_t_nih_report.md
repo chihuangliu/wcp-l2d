@@ -18,10 +18,14 @@ covariate shift (where GNN-FT achieved FNR Gap ≈ 0.003)?
 
 ### Data Pipeline
 ```
-CheXpert (64,534)  →  60% train (38,720) / 20% cal (12,906) / 20% ignored
-NIH     (30,805)   →  50% DRE pool (15,402) / 50% test (15,403)
+Source Domain: CheXpert (N=64,534)
+├── Train (75% = 48,400)  → fit LR (init logits) + GNN
+└── Cal   (25% = 16,134)  → SCRC calibration
 
-StandardScaler fit on CheXpert train, applied to all splits.
+Target Domain: NIH (N=30,805) ─ natural compound shift
+├── DRE Pool (50% = 15,402)  → fit GNN-DRE domain classifier
+└── Test     (50% = 15,403)  → SCRC evaluation
+    └── Warm-up Batch (N=500) → unlabeled target sample to estimate τ_target
 ```
 
 ### Architecture
@@ -42,146 +46,127 @@ StandardScaler fit on CheXpert train, applied to all splits.
 ### Threshold Strategies
 | Strategy | Source of τ | Cal deferral |
 |----------|------------|-------------|
-| Full-Test (FT) | All 15,403 NIH test samples | 52.90% |
-| Warm-up (WU) | N=500 unlabeled NIH samples | 55.59% |
+| Full-Test (FT) | All 15,403 NIH test samples | 51.46% |
+| Warm-up (WU) | N=500 unlabeled NIH samples | 53.50% |
 
 ## 3. DRE Quality
 
 | Method | Domain AUC | ESS% | W_mean | W_max |
 |--------|-----------|------|--------|-------|
-| GNN-DRE (clip=20) | 0.8439 | 32.6% | 0.937 | 20.0 |
-| LR-DRE  (clip=20) | 0.9656 | 6.0% | 0.582 | 20.0 |
-| MLP-DRE (clip=20) | 0.8282 | 36.2% | 0.956 | 12.6 |
+| GNN-DRE (clip=20) | 0.8228 | 35.0% | 0.975 | 13.4 |
+| LR-DRE  (clip=20) | 0.9623 | 6.6% | 0.587 | 20.0 |
+| MLP-DRE (clip=20) | 0.8553 | 31.8% | 0.951 | 15.0 |
 
 ## 4. Stage 1 Results
 
 ### Threshold Values
-- **τ_FT** = 3.4947  (derived from all 15,403 NIH test samples)
-- **τ_WU** = 3.4203  (derived from N=500 warm-up samples; Δτ = -0.0744)
+- **τ_FT** = 3.5438  (derived from all 15,403 NIH test samples)
+- **τ_WU** = 3.4941  (derived from N=500 warm-up samples; Δτ = -0.0497)
 
 ### Entropy Distribution
-- Cal entropy:  mean=3.2121, median=3.5706
-- Test entropy: mean=2.1379, median=1.9463
+- Cal entropy:  mean=3.2258, median=3.5765
+- Test entropy: mean=2.1535, median=1.9653
 - Direction: Cal entropy is **HIGHER** than Test entropy
 
 ### Deferral Rates
 | Strategy | τ | Cal deferred | Test deferred |
 |----------|---|-------------|---------------|
-| Full-Test | 3.4947 | 52.90% (6,827) | 14.99% (2,309) |
-| Warm-up   | 3.4203 | 55.59% (7,174) | 16.25% (2,503) |
+| Full-Test | 3.5438 | 51.46% (8,303) | 14.99% (2,309) |
+| Warm-up   | 3.4941 | 53.50% (8,631) | 16.02% (2,467) |
 
 ## 5. Calibration Results (all 6 arms)
 
 | Arm | Cal n | Mean λ* | Mean Cal FNR | Status |
 |-----|-------|---------|-------------|--------|
-| GNN-FT       |   6079 | 0.037 | 0.092 | PASS |
-| LR-FT        |   6079 | 0.025 | 0.077 | PASS |
-| MLP-FT       |   6079 | 0.034 | 0.097 | PASS |
-| GNN-WU       |   5732 | 0.037 | 0.094 | PASS |
-| LR-WU        |   5732 | 0.025 | 0.080 | PASS |
-| MLP-WU       |   5732 | 0.033 | 0.098 | PASS |
+| GNN-FT       |   7831 | 0.038 | 0.097 | PASS |
+| LR-FT        |   7831 | 0.030 | 0.095 | PASS |
+| MLP-FT       |   7831 | 0.028 | 0.095 | PASS |
+| GNN-WU       |   7503 | 0.037 | 0.098 | PASS |
+| LR-WU        |   7503 | 0.029 | 0.094 | PASS |
+| MLP-WU       |   7503 | 0.028 | 0.096 | PASS |
 
 ## 6. Test Evaluation — 6-Arm Summary
 
 | Arm | ESS% | Cal%def | Tst%def | MnFNR | FNRGap | Violation | MnFPR |
 |-----|------|---------|---------|-------|--------|-----------|-------|
-| GNN-FT       |   32.6 |    52.90 |    14.99 |  0.103 |   0.003 |     0.025 |  0.744 |
-| LR-FT        |    6.0 |    52.90 |    14.99 |  0.195 |   0.095 |     0.099 |  0.629 |
-| MLP-FT       |   36.2 |    52.90 |    14.99 |  0.118 |   0.018 |     0.043 |  0.754 |
-| GNN-WU       |   32.6 |    55.59 |    16.25 |  0.107 |   0.007 |     0.028 |  0.742 |
-| LR-WU        |    6.0 |    55.59 |    16.25 |  0.202 |   0.102 |     0.106 |  0.625 |
-| MLP-WU       |   36.2 |    55.59 |    16.25 |  0.120 |   0.020 |     0.045 |  0.762 |
+| GNN-FT       |   35.0 |    51.46 |    14.99 |  0.112 |   0.012 |     0.031 |  0.719 |
+| LR-FT        |    6.6 |    51.46 |    14.99 |  0.226 |   0.126 |     0.140 |  0.628 |
+| MLP-FT       |   31.8 |    51.46 |    14.99 |  0.197 |   0.097 |     0.101 |  0.623 |
+| GNN-WU       |   35.0 |    53.50 |    16.02 |  0.115 |   0.015 |     0.033 |  0.720 |
+| LR-WU        |    6.6 |    53.50 |    16.02 |  0.227 |   0.127 |     0.141 |  0.631 |
+| MLP-WU       |   31.8 |    53.50 |    16.02 |  0.201 |   0.101 |     0.105 |  0.621 |
 
 **Baseline** (scrc_hard_fnr.ipynb, GNN-DRE clip, per-set thresholds):
 - Best arm (GNN-c): FNR Gap = 0.058, Violation = 0.064, FPR = 0.632
 
 ### Best Arm: GNN-FT
-FNR Gap = 0.003, Violation = 0.025, FPR = 0.744
+FNR Gap = 0.012, Violation = 0.031, FPR = 0.719
 
 ### Worst Arm: LR-WU
-FNR Gap = 0.102, Violation = 0.106, FPR = 0.625
+FNR Gap = 0.127, Violation = 0.141, FPR = 0.631
 
-### Per-Pathology FNR — All 6 Arms (* = violation, FNR > α)
+### Per-Pathology FNR — Best arm (GNN-FT) vs Worst arm (LR-WU)
 
-| Pathology | GNN-FT | LR-FT | MLP-FT | GNN-WU | LR-WU | MLP-WU | α |
-|-----------|--------|-------|--------|--------|-------|--------|---|
-| Atelectasis    | 0.124* | 0.148* | 0.096  | 0.126* | 0.153* | 0.096  | 0.10 |
-| Cardiomegaly   | 0.052  | 0.272* | 0.019  | 0.055  | 0.286* | 0.020  | 0.10 |
-| Consolidation  | 0.116* | 0.215* | 0.157* | 0.127* | 0.236* | 0.164* | 0.10 |
-| Edema          | 0.053  | 0.105* | 0.105* | 0.056  | 0.111* | 0.111* | 0.10 |
-| Effusion       | 0.039  | 0.068  | 0.068  | 0.040  | 0.071  | 0.071  | 0.10 |
-| Pneumonia      | 0.102* | 0.143* | 0.041  | 0.104* | 0.146* | 0.042  | 0.10 |
-| Pneumothorax   | 0.235* | 0.412* | 0.341* | 0.241* | 0.410* | 0.337* | 0.10 |
-| **Mean**       | **0.103** | **0.195** | **0.118** | **0.107** | **0.202** | **0.120** | 0.10 |
+| Pathology | Best FNR | Worst FNR | Alpha |
+|-----------|---------|-----------|-------|
+| Atelectasis     | 0.053 | 0.055 | 0.100 |
+| Cardiomegaly    | 0.048 | 0.403 | 0.100 |
+| Consolidation   | 0.137 | 0.250 | 0.100 |
+| Edema           | 0.118 | 0.235 | 0.100 |
+| Effusion        | 0.068 | 0.047 | 0.100 |
+| Pneumonia       | 0.146 | 0.271 | 0.100 |
+| Pneumothorax    | 0.217 | 0.329 | 0.100 |
+| Mean            | 0.112 | 0.227 | 0.100 |
 
-### Per-Pathology FPR — All 6 Arms
 
+### Per-Pathology Violation Comparison (all 6 arms)
 | Pathology | GNN-FT | LR-FT | MLP-FT | GNN-WU | LR-WU | MLP-WU |
 |-----------|--------|-------|--------|--------|-------|--------|
-| Atelectasis    | 0.658 | 0.655 | 0.692 | 0.660 | 0.650 | 0.697 |
-| Cardiomegaly   | 0.667 | 0.416 | 0.809 | 0.662 | 0.409 | 0.822 |
-| Consolidation  | 0.703 | 0.524 | 0.676 | 0.699 | 0.518 | 0.716 |
-| Edema          | 0.737 | 0.611 | 0.739 | 0.733 | 0.605 | 0.735 |
-| Effusion       | 0.844 | 0.814 | 0.778 | 0.850 | 0.812 | 0.777 |
-| Pneumonia      | 0.879 | 0.816 | 0.886 | 0.878 | 0.813 | 0.884 |
-| Pneumothorax   | 0.718 | 0.566 | 0.701 | 0.716 | 0.565 | 0.704 |
-| **Mean**       | **0.744** | **0.629** | **0.754** | **0.742** | **0.625** | **0.762** |
+| Atelectasis    | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
+| Cardiomegaly   | 0.000 | 0.291 | 0.188 | 0.000 | 0.303 | 0.202 |
+| Consolidation  | 0.037 | 0.139 | 0.000 | 0.043 | 0.150 | 0.000 |
+| Edema          | 0.018 | 0.135 | 0.135 | 0.018 | 0.135 | 0.135 |
+| Effusion       | 0.000 | 0.000 | 0.026 | 0.000 | 0.000 | 0.032 |
+| Pneumonia      | 0.046 | 0.192 | 0.088 | 0.046 | 0.171 | 0.088 |
+| Pneumothorax   | 0.117 | 0.225 | 0.273 | 0.128 | 0.229 | 0.280 |
+| **Mean**       | **0.031** | **0.140** | **0.101** | **0.034** | **0.141** | **0.105** |
 
-## 7. Classifier AUC — LR vs GNN vs MLP (NIH Test)
-
-All classifiers trained on CheXpert, evaluated on NIH test set (n=15,403).
-
-| Pathology | LR AUC | GNN AUC | MLP AUC | GNN−LR | MLP−LR |
-|-----------|--------|---------|---------|--------|--------|
-| Atelectasis    | 0.6868 | 0.7069 | 0.6987 | +0.0201 | +0.0119 |
-| Cardiomegaly   | 0.7393 | 0.7680 | 0.7711 | +0.0287 | +0.0318 |
-| Consolidation  | 0.7252 | 0.7461 | 0.7251 | +0.0209 | −0.0001 |
-| Edema          | 0.8163 | 0.8284 | 0.8056 | +0.0122 | −0.0106 |
-| Effusion       | 0.8031 | 0.8311 | 0.8139 | +0.0280 | +0.0109 |
-| Pneumonia      | 0.6286 | 0.6790 | 0.6560 | +0.0504 | +0.0274 |
-| Pneumothorax   | 0.5674 | 0.6278 | 0.4714 | +0.0603 | −0.0960 |
-| **Mean**       | **0.7095** | **0.7410** | **0.7060** | **+0.0315** | **−0.0035** |
-
-GNN outperforms LR on all 7 pathologies (mean +0.031). MLP roughly matches LR overall but
-collapses on Pneumothorax (−0.096 vs LR), where the label co-occurrence graph provides
-the most benefit.
-
-## 9. Comparison to scrc_hard_fnr.ipynb Baseline
+## 7. Comparison to scrc_hard_fnr.ipynb Baseline
 
 | Aspect | scrc_hard_fnr (best: GNN-c) | SCRC-T Best (GNN-FT) | Change |
 |--------|---------------------------|-------------------------|--------|
 | Threshold source | Per-set (independent) | Test distribution | Fixed |
-| FNR Gap | 0.058 | 0.003 | -0.055 |
-| Violation | 0.064 | 0.025 | -0.039 |
-| FPR | 0.632 | 0.744 | +0.112 |
+| FNR Gap | 0.058 | 0.012 | -0.046 |
+| Violation | 0.064 | 0.031 | -0.033 |
+| FPR | 0.632 | 0.719 | +0.087 |
 
 ### GNN-FT vs Synthetic Covariate Shift Reference
-- **NIH compound shift** (this notebook): GNN-FT FNR Gap = 0.003
+- **NIH compound shift** (this notebook): GNN-FT FNR Gap = 0.012
 - **Pure covariate shift** (σ=3.0):      GNN-FT FNR Gap ≈ 0.003
 - **Residual gap** on NIH = label + concept shift, not DRE quality
 
-## 10. Key Findings
+## 8. Key Findings
 
-1. **SCRC-T vs per-set baseline**: GNN-FT FNR Gap = 0.003 vs baseline 0.058.
+1. **SCRC-T vs per-set baseline**: GNN-FT FNR Gap = 0.012 vs baseline 0.058.
    SCRC-T IMPROVES over per-set thresholds.
 
-2. **FT vs WU agreement**: τ_FT=3.4947 vs τ_WU=3.4203 (Δ=-0.0744).
-   GNN-FT FNR Gap=0.003 vs GNN-WU FNR Gap=0.007.
+2. **FT vs WU agreement**: τ_FT=3.5438 vs τ_WU=3.4941 (Δ=-0.0497).
+   GNN-FT FNR Gap=0.012 vs GNN-WU FNR Gap=0.015.
    N=500 warm-up is sufficient.
 
-3. **GNN vs LR-DRE**: GNN-FT Gap=0.003 (ESS=32.6%) vs
-   LR-FT Gap=0.095 (ESS=6.0%).
+3. **GNN vs LR-DRE**: GNN-FT Gap=0.012 (ESS=35.0%) vs
+   LR-FT Gap=0.126 (ESS=6.6%).
    GNN-DRE ESS advantage translates into better FNR Gap.
 
-4. **MLP vs GNN**: MLP-FT FNR Gap=0.018 (ESS=36.2%) vs
-   GNN-FT Gap=0.003.
+4. **MLP vs GNN**: MLP-FT FNR Gap=0.097 (ESS=31.8%) vs
+   GNN-FT Gap=0.012.
    GNN graph structure provides DRE benefit over MLP.
 
-5. **Compound vs pure shift**: GNN-FT FNR Gap=0.003 on compound shift vs ≈0.003
-   on pure covariate shift. The 1x difference confirms that label + concept
+5. **Compound vs pure shift**: GNN-FT FNR Gap=0.012 on compound shift vs ≈0.003
+   on pure covariate shift. The 4x difference confirms that label + concept
    shift (not DRE quality) is the primary bottleneck for CheXpert→NIH.
 
-## 11. Figure
+## 9. Figure
 Saved to: `report/scrc_t_nih.png`
 - Panel 1: FNR Gap (6 bars with baseline reference at 0.058)
 - Panel 2: Violation (6 bars with baseline reference at 0.064)
