@@ -18,14 +18,10 @@ covariate shift (where GNN-FT achieved FNR Gap ≈ 0.003)?
 
 ### Data Pipeline
 ```
-Source Domain: CheXpert (N=64,534)
-├── Train (75% = 48,400)  → fit LR (init logits) + GNN
-└── Cal   (25% = 16,134)  → SCRC calibration
+CheXpert (64,534)  →  75% train (~48,400) / 25% cal (~16,134) (all data used)
+NIH     (30,805)   →  50% DRE pool (15,402) / 50% test (15,403)
 
-Target Domain: NIH (N=30,805) ─ natural compound shift
-├── DRE Pool (50% = 15,402)  → fit GNN-DRE domain classifier
-└── Test     (50% = 15,403)  → SCRC evaluation
-    └── Warm-up Batch (N=500) → unlabeled target sample to estimate τ_target
+StandardScaler fit on CheXpert train, applied to all splits.
 ```
 
 ### Architecture
@@ -154,61 +150,7 @@ FNR Gap = 0.128, Violation = 0.142, FPR = 0.631
    shift (not DRE quality) is the primary bottleneck for CheXpert→NIH.
 
 ## 9. Figure
-
-![SCRC-T 6-Arm Comparison: FNR Gap, Violation, ESS% (CheXpert → NIH)](scrc_t_nih_75_25.png)
-
+Saved to: `report/scrc_t_nih.png`
 - Panel 1: FNR Gap (6 bars with baseline reference at 0.058)
 - Panel 2: Violation (6 bars with baseline reference at 0.064)
 - Panel 3: ESS% per DRE method (GNN, LR, MLP)
-
-## 10. 風險可靠性分析 — α Sweep (β=0.15 fixed, FT threshold)
-
-**Setup**: Fix β=0.15 with the Full-Test threshold (τ_FT=3.5438).
-Sweep α ∈ {0.05, 0.075, 0.10, 0.125, 0.15, 0.175, 0.20}.
-For each α, recalibrate all three DRE arms (GNN, LR, MLP) on non-deferred Cal
-and evaluate on the non-deferred NIH Test set.
-
-**Figure**: `report/scrc_t_nih_alpha_sweep.png`
-
-![風險可靠性分析: Violation and FNR Gap vs α for GNN, LR, MLP arms](scrc_t_nih_alpha_sweep.png)
-
-### 10.1 Numerical Results
-
-| α     | GNN Gap | GNN Viol | LR Gap | LR Viol | MLP Gap | MLP Viol |
-|-------|---------|----------|--------|---------|---------|----------|
-| 0.050 | 0.032   | 0.041    | 0.084  | 0.089   | 0.078   | 0.082    |
-| 0.075 | 0.027   | 0.044    | 0.119  | 0.127   | 0.093   | 0.095    |
-| 0.100 | 0.012   | 0.031    | 0.127  | 0.142   | 0.100   | 0.104    |
-| 0.125 | 0.016   | 0.032    | 0.142  | 0.151   | 0.098   | 0.102    |
-| 0.150 | 0.021   | 0.039    | 0.139  | 0.151   | 0.101   | 0.103    |
-| 0.175 | 0.024   | 0.046    | 0.131  | 0.146   | 0.096   | 0.102    |
-| 0.200 | 0.025   | 0.046    | 0.116  | 0.127   | 0.088   | 0.096    |
-
-### 10.2 Key Findings
-
-**Finding 1: GNN-DRE violation stays low across the full α range.**
-At α=0.05 (strict): GNN Violation=0.041, LR Violation=0.089, MLP Violation=0.082.
-At α=0.20 (lenient): GNN Violation=0.046, LR Violation=0.127.
-GNN's violation is consistently the lowest across all α values tested, confirming that
-LabelGCN's calibration guarantee holds regardless of how strict the risk target is.
-
-**Finding 2: LR-DRE fails badly at strict α.**
-LR Violation at α=0.05 (0.089) is approximately
-2.2× the GNN violation (0.041).
-Low ESS (6.6%) means the weighted calibration cannot accurately estimate the FNR level
-needed to satisfy tight risk bounds — the guarantee breaks when pushed to α=0.05.
-
-**Finding 3: MLP-DRE is intermediate but unreliable at strict α.**
-MLP Violation at α=0.05 (0.082) is between LR and GNN.
-With ESS=31.8% (close to GNN's 35.0%), MLP should perform similarly to GNN,
-but the lack of graph structure means its probability space DRE is less well-calibrated
-under compound shift.
-
-**Finding 4: GNN violation increases slightly with stricter α, but remains bounded.**
-GNN violation at α=0.10 (0.031) vs α=0.05 (0.041).
-The increase is modest, reflecting that tighter guarantees require more accurate importance
-weighting — and GNN's higher ESS can mostly deliver it.
-
-**Conclusion**: GNN-DRE (LabelGCN) is the only method that reliably meets the FNR target
-across the clinically relevant range α ∈ [0.05, 0.20]. LR-DRE and MLP-DRE fail at strict
-α values due to insufficient ESS for reliable weighted quantile estimation under compound shift.
