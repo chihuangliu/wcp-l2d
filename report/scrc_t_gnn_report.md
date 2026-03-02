@@ -472,7 +472,29 @@ LR-DRE achieves near-perfect domain classification (AUC=0.998) but collapses to 
 weight concentration is severe at σ=3 (outside the Goldilocks zone). MLP-DRE at 9.38% ESS
 provides a useful middle ground between LR and GNN.
 
-### 12.2 Stage 1 Thresholds
+### 12.2 Classifier AUC — Target Test Set
+
+Per-pathology AUC for each classifier (GNN, LR, MLP) evaluated on the blurred Target Test set (σ=3.0, n=12,907).
+
+| Pathology | GNN AUC | LR AUC | MLP AUC |
+|-----------|---------|--------|---------|
+| Atelectasis | 0.7663 | 0.7409 | 0.7733 |
+| Cardiomegaly | 0.8527 | 0.8382 | 0.8489 |
+| Consolidation | 0.8204 | 0.7845 | 0.8248 |
+| Edema | 0.8131 | 0.7791 | 0.8200 |
+| Effusion | 0.8388 | 0.8160 | 0.8455 |
+| Pneumonia | 0.7402 | 0.6902 | 0.7246 |
+| Pneumothorax | 0.6435 | 0.5999 | 0.6305 |
+| **Mean** | **0.7821** | **0.7498** | **0.7811** |
+
+GNN and MLP are closely matched (mean AUC 0.782 vs 0.781), with MLP slightly edging GNN on
+Atelectasis, Consolidation, Edema, and Effusion while GNN leads on Cardiomegaly, Pneumonia, and
+Pneumothorax. LR lags by ~0.032 mean AUC — consistent with its operating in the 1024-dim raw
+feature space rather than the 7-dim probability space where domain shift is easier to model.
+Pneumothorax is the weakest pathology for all three classifiers (0.599–0.644), mirroring the
+known pattern from the NIH compound-shift experiments.
+
+### 12.3 Stage 1 Thresholds
 
 | Strategy | τ | Cal defer | Test defer |
 |----------|---|-----------|-----------|
@@ -482,7 +504,7 @@ provides a useful middle ground between LR and GNN.
 Δτ = −0.027 (−0.7%) between WU and FT — small sampling error from estimating the 85th percentile
 from 500 vs 12,907 samples.
 
-### 12.3 Calibration — All 6 Arms Pass
+### 12.4 Calibration — All 6 Arms Pass
 
 All 6 arms achieve Cal FNR ≤ 0.10 (PASS):
 
@@ -499,7 +521,7 @@ LR-DRE's low Cal FNR (0.073/0.078 vs 0.099 for GNN) reflects aggressive over-est
 importance weights — the calibration over-adjusts for the domain shift, setting conservative
 λ* values that permit high FNR on Test.
 
-### 12.4 Test Evaluation — 6-Arm Summary
+### 12.5 Test Evaluation — 6-Arm Summary
 
 | Arm | ESS% | Cal%def | Tst%def | MnFNR | **FNR Gap** | **Violation** | MnFPR |
 |-----|------|---------|---------|-------|------------|--------------|-------|
@@ -510,7 +532,51 @@ importance weights — the calibration over-adjusts for the domain shift, settin
 | LR-WU  |  1.4 | 29.31 | 16.74 | 0.168 | **0.068** | **0.083** | 0.490 |
 | MLP-WU |  9.4 | 29.31 | 16.74 | 0.114 | **0.014** | **0.035** | 0.502 |
 
-### 12.5 Per-pathology: Best (GNN-WU) vs Worst (LR-WU)
+### 12.6 Per-pathology Violation
+
+Violation = max(0, FNR − α) per pathology and DRE method, for both threshold strategies.
+
+**Full-Test (FT) threshold:**
+
+| Pathology | GNN | LR | MLP |
+|-----------|-----|----|-----|
+| Atelectasis | 0.0000 | 0.0000 | 0.0000 |
+| Cardiomegaly | 0.0376 | 0.0000 | 0.0119 |
+| Consolidation | 0.0195 | 0.0552 | 0.0092 |
+| Edema | 0.0000 | 0.0000 | 0.0000 |
+| Effusion | 0.0000 | 0.0000 | 0.0000 |
+| Pneumonia | 0.0044 | 0.0044 | 0.0000 |
+| Pneumothorax | 0.0374 | **0.3397** | **0.2145** |
+| **Mean** | **0.014** | **0.057** | **0.034** |
+
+**Warm-up (WU) threshold:**
+
+| Pathology | GNN | LR | MLP |
+|-----------|-----|----|-----|
+| Atelectasis | 0.0000 | 0.0000 | 0.0000 |
+| Cardiomegaly | 0.0388 | 0.0000 | 0.0133 |
+| Consolidation | 0.0200 | 0.0541 | 0.0118 |
+| Edema | 0.0000 | 0.0000 | 0.0000 |
+| Effusion | 0.0000 | 0.0000 | 0.0000 |
+| Pneumonia | 0.0005 | **0.1814** | 0.0000 |
+| Pneumothorax | 0.0189 | **0.3429** | **0.2177** |
+| **Mean** | **0.011** | **0.083** | **0.035** |
+
+**Observations:**
+
+- **Pneumothorax dominates violation for LR and MLP.** LR-WU violation of 0.343 is catastrophic —
+  its 1.4% ESS cannot support reliable weighted calibration at the tail. MLP is intermediate at
+  ~0.215–0.218, reflecting its 9.4% ESS.
+- **GNN keeps Pneumothorax violation low** (0.019–0.037), the only method that adequately controls
+  it. This aligns with Pneumothorax having the lowest target AUC (0.644 for GNN, 0.600 for LR).
+- **LR-WU spikes on Pneumonia** (0.181 vs 0.004 for LR-FT) — the slightly lower WU threshold
+  keeps a harder Pneumonia subset in Test that the noisy LR-weighted calibration cannot cover.
+- **Atelectasis, Edema, Effusion: zero violation for all methods** — these are the "easy" pathologies
+  where even LR-DRE calibrates accurately.
+- **Cardiomegaly and Consolidation** show minor violations (0.010–0.055) across methods; they are
+  hard for GNN and MLP but not catastrophic.
+
+### 12.7 Per-pathology FNR: Best (GNN-WU) vs Worst (LR-WU)
 
 | Pathology | GNN-WU FNR | LR-WU FNR | α |
 |-----------|-----------|----------|---|
@@ -527,7 +593,7 @@ LR-WU violates severely for Pneumonia (+0.185 above α) and Pneumothorax (+0.348
 GNN-WU has FNR ≤ α for Atelectasis, Edema, Effusion, Pneumonia, with violations only for
 Cardiomegaly (0.137) and Pneumothorax (0.121).
 
-### 12.6 Key Findings
+### 12.8 Key Findings
 
 **Finding 1: SCRC-T does NOT rescue low-ESS DREs.**
 The target-anchored threshold restores exchangeability for all arms, but ESS governs whether
@@ -558,7 +624,7 @@ The threshold strategy (FT vs WU) produces at most 0.026 gap difference within e
 while DRE choice produces up to 0.066 gap difference within each threshold. ESS quality
 dominates threshold quality.
 
-### 12.7 Practical Recommendations (Updated)
+### 12.9 Practical Recommendations (Updated)
 
 1. **Use GNN-DRE + Warm-up SCRC-T**: Highest ESS (16.9%), deployable with N=500 unlabeled.
 2. **Do not use LR-DRE when outside Goldilocks zone** (σ≥2, Domain AUC>0.98): 1.4% ESS
