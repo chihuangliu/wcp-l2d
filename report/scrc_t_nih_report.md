@@ -90,11 +90,11 @@ Target Domain: NIH (N=30,805) ─ natural compound shift
 | Arm | ESS% | Cal%def | Tst%def | MnFNR | FNRGap | Violation | MnFPR |
 |-----|------|---------|---------|-------|--------|-----------|-------|
 | GNN-FT       |   35.0 |    51.46 |    14.99 |  0.112 |   0.012 |     0.031 |  0.719 |
-| LR-FT        |    6.6 |    51.46 |    14.99 |  0.226 |   0.126 |     0.140 |  0.628 |
-| MLP-FT       |   31.8 |    51.46 |    14.99 |  0.197 |   0.097 |     0.101 |  0.623 |
-| GNN-WU       |   35.0 |    53.50 |    16.02 |  0.115 |   0.015 |     0.033 |  0.720 |
-| LR-WU        |    6.6 |    53.50 |    16.02 |  0.227 |   0.127 |     0.141 |  0.631 |
-| MLP-WU       |   31.8 |    53.50 |    16.02 |  0.201 |   0.101 |     0.105 |  0.621 |
+| LR-FT        |    6.6 |    51.46 |    14.99 |  0.227 |   0.127 |     0.142 |  0.628 |
+| MLP-FT       |   31.8 |    51.46 |    14.99 |  0.200 |   0.100 |     0.104 |  0.623 |
+| GNN-WU       |   35.0 |    53.50 |    16.02 |  0.115 |   0.015 |     0.033 |  0.719 |
+| LR-WU        |    6.6 |    53.50 |    16.02 |  0.228 |   0.128 |     0.142 |  0.631 |
+| MLP-WU       |   31.8 |    53.50 |    16.02 |  0.204 |   0.104 |     0.108 |  0.620 |
 
 **Baseline** (scrc_hard_fnr.ipynb, GNN-DRE clip, per-set thresholds):
 - Best arm (GNN-c): FNR Gap = 0.058, Violation = 0.064, FPR = 0.632
@@ -103,33 +103,20 @@ Target Domain: NIH (N=30,805) ─ natural compound shift
 FNR Gap = 0.012, Violation = 0.031, FPR = 0.719
 
 ### Worst Arm: LR-WU
-FNR Gap = 0.127, Violation = 0.141, FPR = 0.631
+FNR Gap = 0.128, Violation = 0.142, FPR = 0.631
 
 ### Per-Pathology FNR — Best arm (GNN-FT) vs Worst arm (LR-WU)
 
 | Pathology | Best FNR | Worst FNR | Alpha |
 |-----------|---------|-----------|-------|
-| Atelectasis     | 0.053 | 0.055 | 0.100 |
-| Cardiomegaly    | 0.048 | 0.403 | 0.100 |
-| Consolidation   | 0.137 | 0.250 | 0.100 |
+| Atelectasis     | 0.054 | 0.056 | 0.100 |
+| Cardiomegaly    | 0.051 | 0.402 | 0.100 |
+| Consolidation   | 0.139 | 0.255 | 0.100 |
 | Edema           | 0.118 | 0.235 | 0.100 |
-| Effusion        | 0.068 | 0.047 | 0.100 |
-| Pneumonia       | 0.146 | 0.271 | 0.100 |
-| Pneumothorax    | 0.217 | 0.329 | 0.100 |
-| Mean            | 0.112 | 0.227 | 0.100 |
-
-
-### Per-Pathology Violation Comparison (all 6 arms)
-| Pathology | GNN-FT | LR-FT | MLP-FT | GNN-WU | LR-WU | MLP-WU |
-|-----------|--------|-------|--------|--------|-------|--------|
-| Atelectasis    | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 | 0.000 |
-| Cardiomegaly   | 0.000 | 0.291 | 0.188 | 0.000 | 0.303 | 0.202 |
-| Consolidation  | 0.037 | 0.139 | 0.000 | 0.043 | 0.150 | 0.000 |
-| Edema          | 0.018 | 0.135 | 0.135 | 0.018 | 0.135 | 0.135 |
-| Effusion       | 0.000 | 0.000 | 0.026 | 0.000 | 0.000 | 0.032 |
-| Pneumonia      | 0.046 | 0.192 | 0.088 | 0.046 | 0.171 | 0.088 |
-| Pneumothorax   | 0.117 | 0.225 | 0.273 | 0.128 | 0.229 | 0.280 |
-| **Mean**       | **0.031** | **0.140** | **0.101** | **0.034** | **0.141** | **0.105** |
+| Effusion        | 0.067 | 0.049 | 0.100 |
+| Pneumonia       | 0.128 | 0.255 | 0.100 |
+| Pneumothorax    | 0.231 | 0.347 | 0.100 |
+| Mean            | 0.112 | 0.228 | 0.100 |
 
 ## 7. Comparison to scrc_hard_fnr.ipynb Baseline
 
@@ -155,10 +142,10 @@ FNR Gap = 0.127, Violation = 0.141, FPR = 0.631
    N=500 warm-up is sufficient.
 
 3. **GNN vs LR-DRE**: GNN-FT Gap=0.012 (ESS=35.0%) vs
-   LR-FT Gap=0.126 (ESS=6.6%).
+   LR-FT Gap=0.127 (ESS=6.6%).
    GNN-DRE ESS advantage translates into better FNR Gap.
 
-4. **MLP vs GNN**: MLP-FT FNR Gap=0.097 (ESS=31.8%) vs
+4. **MLP vs GNN**: MLP-FT FNR Gap=0.100 (ESS=31.8%) vs
    GNN-FT Gap=0.012.
    GNN graph structure provides DRE benefit over MLP.
 
